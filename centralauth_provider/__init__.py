@@ -14,11 +14,14 @@ CENTRALAUTH_USER_ATTRIBUTES_DEFAULT = {
     'first_name':'first_name',
     'last_name':'last_name',
     'email':'email',
+    'vtknr':'memberprofile__vtknr',
+    'studie':'memberprofile__studies__name__name',
 }
-CENTRALAUTH_USER_ATTRIBUTES_DEFAULT = getattr(settings, 'CENTRALAUTH_USER_ATTRIBUTES', CENTRALAUTH_USER_ATTRIBUTES_DEFAULT)
+CENTRALAUTH_USER_ATTRIBUTES = getattr(settings, 'CENTRALAUTH_USER_ATTRIBUTES', CENTRALAUTH_USER_ATTRIBUTES_DEFAULT)
 
 # Sites that have access to this central authentication system
 CENTRALAUTH_SERVICES_DEFAULT = (
-    #[url, secret_key, user attributes]
+    ['/data',CENTRALAUTH_USER_ATTRIBUTES],
+    ['www.bla.be',CENTRALAUTH_USER_ATTRIBUTES],
 )
-CENTRALAUTH_SERVICES_DEFAULT = getattr(settings, 'CENTRALAUTH_SERVICES', CENTRALAUTH_SERVICES_DEFAULT)
+CENTRALAUTH_SERVICES = getattr(settings, 'CENTRALAUTH_SERVICES', CENTRALAUTH_SERVICES_DEFAULT)
