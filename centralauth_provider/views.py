@@ -1,12 +1,10 @@
-import json
-
-#from django.db.models.fields.related import RelatedManager
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 
+import json
+
 from centralauth_provider import *
-from centralauth_provider.models import Session
 
 def validate_service(service):
     matching_services = [s[0] for s in CENTRALAUTH_SERVICES if s[0] == service]
@@ -21,8 +19,7 @@ def get_service_attributes(service):
 
 def render_dict_to_response(data_dict):
     # Return response
-    return HttpResponse(content="<body>"+json.dumps(data_dict)+"</body>")
-    
+    return HttpResponse(content=json.dumps("<body>%s</body>" %(data_dict,)))
 
 def authenticate(request):
     #TODO: Add check to see if request from internal IP
@@ -34,7 +31,7 @@ def authenticate(request):
     data_dict = dict()
 
     # Check if all required GET data is available
-    if (all((service, session_key)) is False):
+    if all((service, session_key)) is False:
         data_dict['status'] = 'Incorrect request'
 
     # Check if the service is allowed to request an authentication
@@ -54,7 +51,6 @@ def authenticate(request):
     # Return response
     return render_dict_to_response(data_dict)
 
-
 def get_attributes(request):
     #TODO
     # Gather the GET data from request
@@ -64,7 +60,7 @@ def get_attributes(request):
     data_dict = dict()
 
     # Check if all required GET data is available
-    if (all((service, session_key)) is False):
+    if all((service, session_key)) is False:
         data_dict['status'] = 'Incorrect request'
         return render_dict_to_response(data_dict)
 
@@ -76,36 +72,30 @@ def get_attributes(request):
 
     # Get list of attributes that should be provided
     service_attributes = get_service_attributes(service)
-    attributes = service_attributes.values()
 
     # Get user data from database
-    #user_data = User.objects.filter(sessions__key=session_key).values() #*attributes)
-    user = User.objects.get(sessions__key=session_key)
-
-    # Check if a user was found
-    #if len(user_data) == 1:
-    #    user_data = user_data[0]
-    #else:
-    #    data_dict['status'] = 'Invalid Session Key'
-    #    return render_dict_to_response(data_dict)
+    try:
+        user = User.objects.get(sessions__key=session_key)
+    except ObjectDoesNotExist:
+        data_dict['status'] = 'Invalid Session Key'
+        return render_dict_to_response(data_dict)
 
     # Render it to a the required dict
     data_dict["attributes"] = dict()
     for key, value in service_attributes.items():
         object = user
         attribute = value.split("__")
-        try:
-            for s in attribute[:-1]:
-                object = object.__getattribute__(s)
 
-                # If the object is a related manager, fetch the real object
-                if hasattr(object, 'get'):
-                    object = object.get()
+        # Get the model that the field is a direct member to
+        for s in attribute[:-1]:
+            object = getattr(object, s)
 
-            data_dict["attributes"][key] = object.__getattribute__(attribute[-1])
+            # Check if the attribute was a foreignkey
+            if hasattr(object, 'count') and object.count() is 1:
+                object = object.get()
 
-        except ObjectDoesNotExist:
-            data_dict["attributes"][key] = None
+        # Add the actual attribute to the dict
+        data_dict['attributes'][key] = getattr(object, attribute[-1])
 
     data_dict["status"] = 'Successful'
 
